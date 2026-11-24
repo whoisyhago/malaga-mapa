@@ -17,13 +17,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -36,7 +35,7 @@ jobs:
         run: |
           mkdir -p data
           URL="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/data/listings.json"
-          curl -fsSL "$URL" -o data/listings.json || echo "Sin datos previos (primera ejecución)"
+          curl -fsSL "$URL" -o data/listings.json || { echo "Sin datos previos (primera ejecución)"; rm -f data/listings.json; }
 
       - name: Recoger anuncios
         env:
@@ -58,9 +57,16 @@ jobs:
           cp data/listings.json _site/data/
           touch _site/.nojekyll
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
 
-      - id: deploy
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
         uses: actions/deploy-pages@v4
