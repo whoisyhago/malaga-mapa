@@ -281,8 +281,16 @@ def collect():
     for it in items:
         it["first_seen"] = prev.get(it["id"]) or ts
     listings = dedupe(items)
-    if not listings and prev:
-        log("Ninguna fuente devolvió datos: se conserva el fichero anterior"); return
+    if not listings:
+        prev_is_real = False
+        try:
+            prev_is_real = bool(prev) and not json.load(open(OUT, encoding="utf-8")).get("demo")
+        except Exception:
+            pass
+        if prev_is_real:
+            log("Ninguna fuente devolvió datos: se conserva el fichero anterior"); return
+        log("Sin fuentes reales con datos todavía -> se generan datos DEMO")
+        return demo()
     write({"generated_at": ts, "demo": False, "sources": counts, "listings": listings})
     new = sum(1 for l in listings if l["first_seen"] == ts)
     log(f"OK: {len(listings)} anuncios activos ({new} nuevos) -> {OUT}")
