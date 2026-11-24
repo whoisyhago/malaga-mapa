@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa de viviendas · Málaga</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --ink:#1b1f24; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#0f766e; --accent-soft:#e6f4f2; --new:#dc2626;
+    --c-idealista:#65a30d; --c-fotocasa:#2563eb; --c-pisos:#ea580c; --c-otro:#7c3aed;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+  .app{display:grid;grid-template-columns:290px 1fr 380px;grid-template-rows:52px 1fr;height:100vh}
+  header{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-.01em}
+  header .stats{color:var(--muted);font-size:13px}
+  header .spacer{flex:1}
+  .demo-badge{background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600;display:none}
+  button,select,input{font:inherit;color:inherit}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
+  .btn:hover{border-color:#cbd5e1}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  aside.filters{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:14px 14px 30px}
+  .f-group{margin-bottom:16px}
+  .f-group>label,.f-title{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin-bottom:6px}
+  .row{display:flex;gap:6px}
+  .row input{width:100%}
+  input[type=number],input[type=search],select{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;width:100%}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{flex:1;border:0;background:#fff;padding:6px 4px;cursor:pointer;border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:var(--accent);color:#fff}
+  .checks label{display:flex;align-items:center;gap:6px;padding:2px 0;cursor:pointer}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .count{margin-left:auto;color:var(--muted);font-size:12px}
+  main#map{height:100%}
+  section.list{display:flex;flex-direction:column;background:var(--panel);border-left:1px solid var(--line);min-height:0}
+  .list-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+  .list-head select{width:auto}
+  .list-head .n{font-weight:600}
+  .cards{overflow:auto;flex:1}
+  .card{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+  .card:hover,.card.hl{background:var(--accent-soft)}
+  .card .thumb{width:96px;height:72px;border-radius:8px;background:#e5e7eb center/cover no-repeat}
+  .card .price{font-weight:700;font-size:15px}
+  .card .ppm{color:var(--muted);font-weight:400;font-size:12px;margin-left:4px}
+  .card .specs{color:#374151;font-size:13px}
+  .card .addr{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+  .b{font-size:11px;padding:1px 6px;border-radius:999px;border:1px solid var(--line);color:#374151;background:#fff}
+  .b.portal{color:#fff;border:0}
+  .b.new{background:var(--new);color:#fff;border:0;font-weight:700}
+  .b.op{background:#f3f4f6}
+  .empty{padding:30px;text-align:center;color:var(--muted)}
+  .pin{background:#fff;border:2px solid var(--c);border-radius:999px;padding:1px 6px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.25);transform:translate(-50%,-50%);display:inline-block;color:#111}
+  .pin.new{background:var(--new);border-color:var(--new);color:#fff}
+  .pin.hl{transform:translate(-50%,-50%) scale(1.25);z-index:9999}
+  .leaflet-div-icon.pin-wrap{background:none;border:0}
+  .popup .t{font-weight:650;margin-bottom:4px}
+  .popup img{width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px}
+  .popup a{color:var(--accent);font-weight:600}
+  .msg{position:absolute;z-index:1000;left:50%;top:64px;transform:translateX(-50%);background:#111;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;display:none}
+  @media (max-width:1100px){.app{grid-template-columns:260px 1fr;grid-template-rows:52px 1fr 40vh}section.list{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Viviendas Málaga</h1>
+    <span class="demo-badge" id="demoBadge">DATOS DEMO</span>
+    <span class="stats" id="stats">Cargando…</span>
+    <span class="spacer"></span>
+    <label class="stats">Auto-refresco
+      <select id="autoRefresh" style="width:auto;margin-left:4px">
+        <option value="0">Off</option><option value="60">1 min</option>
+        <option value="300" selected>5 min</option><option value="900">15 min</option>
+      </select>
+    </label>
+    <button class="btn" id="markSeen" title="Quita la marca NUEVO a todo lo que ves ahora">Marcar vistos</button>
+    <button class="btn" id="exportCsv">Exportar CSV</button>
+    <button class="btn primary" id="reload">↻ Actualizar</button>
+  </header>
+
+  <aside class="filters">
+    <div class="f-group">
+      <span class="f-title">Operación</span>
+      <div class="seg" id="fOp">
+        <button data-v="" class="on">Todas</button><button data-v="sale">Venta</button><button data-v="rent">Alquiler</button>
+      </div>
+    </div>
+    <div class="f-group">
+      <span class="f-title">Portal</span>
+      <div class="checks" id="fPortal"></div>
+    </div>
+    <div class="f-group">
+      <span class="f-title">Tipo</span>
+      <div class="checks" id="fType"></div>
+    </div>
+    <div class="f-group">
+      <label>Precio (€)</label>
+      <div class="row"><input type="number" id="fPriceMin" placeholder="mín" min="0" step="1000"><input type="number" id="fPriceMax" placeholder="máx" min="0" step="1000"></div>
+    </div>
+    <div class="f-group">
+      <label>Superficie (m²)</label>
+      <div class="row"><input type="number" id="fSizeMin" placeholder="mín" min="0"><input type="number" id="fSizeMax" placeholder="máx" min="0"></div>
+    </div>
+    <div class="f-group">
+      <label>€/m² máximo</label>
+      <input type="number" id="fPpmMax" placeholder="sin límite" min="0">
+    </div>
+    <div class="f-group">
+      <span class="f-title">Habitaciones</span>
+      <div class="seg" id="fRooms">
+        <button data-v="0" class="on">Todas</button><button data-v="1">1+</button><button data-v="2">2+</button><button data-v="3">3+</button><button data-v="4">4+</button>
+      </div>
+    </div>
+    <div class="f-group">
+      <span class="f-title">Baños</span>
+      <div class="seg" id="fBaths">
+        <button data-v="0" class="on">Todos</button><button data-v="1">1+</button><button data-v="2">2+</button><button data-v="3">3+</button>
+      </div>
+    </div>
+    <div class="f-group">
+      <label>Distrito / zona</label>
+      <select id="fDistrict"><option value="">Todos</option></select>
+    </div>
+    <div class="f-group">
+      <span class="f-title">Extras</span>
+      <div class="checks" id="fFeat"></div>
+    </div>
+    <div class="f-group">
+      <label>Buscar texto</label>
+      <input type="search" id="fText" placeholder="calle, barrio, palabra…">
+    </div>
+    <div class="f-group checks">
+      <label><input type="checkbox" id="fNew"> Solo nuevos desde mi última visita</label>
+      <label><input type="checkbox" id="fBounds"> Solo lo visible en el mapa</label>
+    </div>
+    <button class="btn" id="resetF" style="width:100%">Limpiar filtros</button>
+  </aside>
+
+  <main id="map"></main>
+
+  <section class="list">
+    <div class="list-head">
+      <span class="n" id="nShown">0</span><span class="stats">resultados</span>
+      <span class="spacer" style="flex:1"></span>
+      <select id="sort">
+        <option value="recent">Más recientes</option>
+        <option value="price_asc">Precio ↑</option>
+        <option value="price_desc">Precio ↓</option>
+        <option value="ppm_asc">€/m² ↑</option>
+        <option value="size_desc">m² ↓</option>
+      </select>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+</div>
+<div class="msg" id="msg"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+(() => {
+  const DATA_URL = 'data/listings.json';
+  const PORTALS = {
+    idealista: {label:'Idealista', color:'var(--c-idealista)'},
+    fotocasa:  {label:'Fotocasa',  color:'var(--c-fotocasa)'},
+    pisoscom:  {label:'Pisos.com', color:'var(--c-pisos)'},
+  };
+  const TYPES = {flat:'Piso',penthouse:'Ático',duplex:'Dúplex',studio:'Estudio',house:'Casa / chalet',other:'Otro'};
+  const FEATS = {lift:'Ascensor',terrace:'Terraza',parking:'Garaje',pool:'Piscina',ac:'Aire acond.'};
+  const portalInfo = p => PORTALS[p] || {label:p, color:'var(--c-otro)'};
+
+  // --- storage (puede fallar en algunos contextos) ---
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  };
+  // "Nuevo" = first_seen posterior a la última vez que el usuario marcó vistos (o primera visita)
+  let seenCutoff = store.get('mlg_seen_cutoff', null);
+
+  // --- state ---
+  let all = [], meta = {};
+  const F = Object.assign({
+    op:'', portals:null, types:null, priceMin:'', priceMax:'', sizeMin:'', sizeMax:'', ppmMax:'',
+    rooms:0, baths:0, district:'', feats:[], text:'', onlyNew:false, bounds:false, sort:'recent'
+  }, store.get('mlg_filters', {}));
+
+  // --- map ---
+  const map = L.map('map', {preferCanvas:true}).setView([36.7213, -4.4214], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:19, attribution:'&copy; OpenStreetMap'
+  }).addTo(map);
+  const cluster = L.markerClusterGroup({showCoverageOnHover:false, maxClusterRadius:45, disableClusteringAtZoom:17});
+  map.addLayer(cluster);
+  const markers = new Map();
+
+  const $ = id => document.getElementById(id);
+  const fmtEur = n => n==null ? '—' : n.toLocaleString('es-ES',{maximumFractionDigits:0}) + ' €';
+  const shortPrice = (l) => {
+    if (l.price==null) return '?';
+    if (l.operation==='rent') return (l.price>=1000 ? (l.price/1000).toFixed(1).replace('.0','')+'k' : l.price) + '€/mes';
+    return l.price>=1e6 ? (l.price/1e6).toFixed(2).replace(/\.?0+$/,'')+'M' : Math.round(l.price/1000)+'k';
+  };
+  const ppm = l => (l.price && l.size) ? Math.round(l.price / l.size) : null;
+  const isNew = l => seenCutoff ? (l.first_seen && l.first_seen > seenCutoff) : false;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const safeUrl = u => /^https?:\/\//i.test(u||'') ? u : null;
+
+  function toast(t){ const m=$('msg'); m.textContent=t; m.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>m.style.display='none',3000); }
+
+  // --- filter UI setup ---
+  function buildChecks(container, entries, selected, key){
+    container.innerHTML = entries.map(([v, label, color, n]) => `
+      <label><input type="checkbox" value="${esc(v)}" ${(!selected || selected.includes(v))?'checked':''}>
+      ${color?`<span class="dot" style="background:${color}"></span>`:''}${esc(label)}
+      ${n!=null?`<span class="count">${n}</span>`:''}</label>`).join('');
+    container.onchange = () => {
+      const vals = [...container.querySelectorAll('input:checked')].map(i=>i.value);
+      F[key] = (key==='feats') ? vals : (vals.length===entries.length ? null : vals);
+      apply();
+    };
+  }
+  function segBind(id, key, num){
+    const el = $(id);
+    el.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(F[key])===b.dataset.v));
+    el.onclick = e => {
+      const b = e.target.closest('button'); if(!b) return;
+      F[key] = num ? +b.dataset.v : b.dataset.v;
+      el.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+      apply();
+    };
+  }
+  function inputBind(id, key, type='input'){
+    const el = $(id);
+    if (el.type==='checkbox') el.checked = !!F[key]; else el.value = F[key] ?? '';
+    el.addEventListener(type, () => { F[key] = el.type==='checkbox' ? el.checked : el.value; apply(); });
+  }
+
+  function buildDynamicFilters(){
+    const countBy = k => all.reduce((m,l)=>(m[l[k]]=(m[l[k]]||0)+1,m),{});
+    const pc = countBy('portal');
+    const portalKeys = [...new Set([...Object.keys(PORTALS), ...Object.keys(pc)])];
+    buildChecks($('fPortal'), portalKeys.map(p=>[p, portalInfo(p).label, portalInfo(p).color, pc[p]||0]), F.portals, 'portals');
+    const tc = countBy('type');
+    buildChecks($('fType'), Object.keys(TYPES).filter(t=>tc[t]).map(t=>[t, TYPES[t], null, tc[t]]), F.types, 'types');
+    buildChecks($('fFeat'), Object.entries(FEATS).map(([k,v])=>[k,v,null,null]), F.feats.length?F.feats:[], 'feats');
+    // feats: por defecto ninguno marcado = sin restricción
+    $('fFeat').querySelectorAll('input').forEach(i=>i.checked = F.feats.includes(i.value));
+    const ds = [...new Set(all.map(l=>l.district).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    $('fDistrict').innerHTML = '<option value="">Todos</option>' + ds.map(d=>`<option ${d===F.district?'selected':''}>${esc(d)}</option>`).join('');
+  }
+
+  function setupStaticFilters(){
+    segBind('fOp','op'); segBind('fRooms','rooms',true); segBind('fBaths','baths',true);
+    [['fPriceMin','priceMin'],['fPriceMax','priceMax'],['fSizeMin','sizeMin'],['fSizeMax','sizeMax'],['fPpmMax','ppmMax'],['fText','text']].forEach(([i,k])=>inputBind(i,k));
+    inputBind('fDistrict','district','change'); inputBind('fNew','onlyNew','change'); inputBind('fBounds','bounds','change');
+    $('sort').value = F.sort; $('sort').onchange = e => { F.sort = e.target.value; apply(); };
+    map.on('moveend', () => { if (F.bounds) apply(true); });
+    $('resetF').onclick = () => {
+      Object.assign(F, {op:'',portals:null,types:null,priceMin:'',priceMax:'',sizeMin:'',sizeMax:'',ppmMax:'',rooms:0,baths:0,district:'',feats:[],text:'',onlyNew:false,bounds:false});
+      setupStaticFilters(); buildDynamicFilters(); apply();
+    };
+  }
+
+  // --- filtering ---
+  function filtered(){
+    const n = v => v===''||v==null ? null : +v;
+    const pMin=n(F.priceMin), pMax=n(F.priceMax), sMin=n(F.sizeMin), sMax=n(F.sizeMax), ppmMax=n(F.ppmMax);
+    const txt = F.text.trim().toLowerCase();
+    const b = F.bounds ? map.getBounds() : null;
+    return all.filter(l => {
+      if (F.op && l.operation!==F.op) return false;
+      if (F.portals && !F.portals.includes(l.portal)) return false;
+      if (F.types && !F.types.includes(l.type)) return false;
+      if (pMin!=null && !(l.price>=pMin)) return false;
+      if (pMax!=null && !(l.price<=pMax)) return false;
+      if (sMin!=null && !(l.size>=sMin)) return false;
+      if (sMax!=null && !(l.size<=sMax)) return false;
+      if (ppmMax!=null) { const v=ppm(l); if (v==null || v>ppmMax) return false; }
+      if (F.rooms && !((l.rooms??-1)>=F.rooms)) return false;
+      if (F.baths && !((l.bathrooms??-1)>=F.baths)) return false;
+      if (F.district && l.district!==F.district) return false;
+      if (F.feats.length && !F.feats.every(f => (l.features||[]).includes(f))) return false;
+      if (F.onlyNew && !isNew(l)) return false;
+      if (txt && !(`${l.title} ${l.address} ${l.district} ${l.neighborhood}`.toLowerCase().includes(txt))) return false;
+      if (b && !(l.lat!=null && b.contains([l.lat,l.lng]))) return false;
+      return true;
+    });
+  }
+  const sorters = {
+    recent:(a,b)=>(b.first_seen||'').localeCompare(a.first_seen||'') || (b.published||'').localeCompare(a.published||''),
+    price_asc:(a,b)=>(a.price??1e12)-(b.price??1e12),
+    price_desc:(a,b)=>(b.price??-1)-(a.price??-1),
+    ppm_asc:(a,b)=>(ppm(a)??1e12)-(ppm(b)??1e12),
+    size_desc:(a,b)=>(b.size??-1)-(a.size??-1),
+  };
+
+  // --- render ---
+  function popupHtml(l){
+    const u = safeUrl(l.url);
+    const also = (l.also_on||[]).filter(x=>safeUrl(x.url)).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(portalInfo(x.portal).label)}</a>`).join(' · ');
+    return `<div class="popup">
+      ${safeUrl(l.image)?`<img src="${esc(l.image)}" alt="" loading="lazy">`:''}
+      <div class="t">${fmtEur(l.price)}${l.operation==='rent'?'/mes':''} ${isNew(l)?'<span class="b new">NUEVO</span>':''}</div>
+      <div>${esc(TYPES[l.type]||'')} · ${l.size??'?'} m² · ${l.rooms??'?'} hab · ${l.bathrooms??'?'} baños</div>
+      <div style="color:#6b7280">${esc(l.address||l.district||'')}</div>
+      <div style="margin-top:6px">${u?`<a href="${esc(u)}" target="_blank" rel="noopener">Ver en ${esc(portalInfo(l.portal).label)} →</a>`:''}
+      ${also?`<div style="margin-top:3px;font-size:12px">También en: ${also}</div>`:''}</div></div>`;
+  }
+  function makeMarker(l){
+    const color = portalInfo(l.portal).color;
+    const icon = L.divIcon({className:'pin-wrap', html:`<span class="pin ${isNew(l)?'new':''}" style="--c:${color}">${shortPrice(l)}</span>`, iconSize:[0,0]});
+    const m = L.marker([l.lat,l.lng], {icon});
+    m.bindPopup(() => popupHtml(l), {maxWidth:260});
+    m.on('mouseover', () => highlightCard(l.id, true));
+    m.on('mouseout', () => highlightCard(l.id, false));
+    m.on('click', () => { const c=document.querySelector(`.card[data-id="${CSS.escape(l.id)}"]`); c && c.scrollIntoView({block:'nearest',behavior:'smooth'}); });
+    return m;
+  }
+  function highlightCard(id, on){ const c=document.querySelector(`.card[data-id="${CSS.escape(id)}"]`); c && c.classList.toggle('hl', on); }
+
+  let shown = [];
+  function apply(listOnly){
+    store.set('mlg_filters', F);
+    shown = filtered().sort(sorters[F.sort] || sorters.recent);
+    if (!listOnly){
+      cluster.clearLayers(); markers.clear();
+      const ms = [];
+      for (const l of shown){ if (l.lat==null||l.lng==null) continue; const m=makeMarker(l); markers.set(l.id,m); ms.push(m); }
+      cluster.addLayers(ms);
+    }
+    $('nShown').textContent = shown.length.toLocaleString('es-ES');
+    const LIMIT = 400;
+    $('cards').innerHTML = shown.length ? shown.slice(0,LIMIT).map(l => `
+      <div class="card" data-id="${esc(l.id)}">
+        <div class="thumb" style="${safeUrl(l.image)?`background-image:url('${esc(l.image)}')`:''}"></div>
+        <div>
+          <div class="price">${fmtEur(l.price)}${l.operation==='rent'?'/mes':''}${ppm(l)?`<span class="ppm">${ppm(l).toLocaleString('es-ES')} €/m²</span>`:''}</div>
+          <div class="specs">${l.size??'?'} m² · ${l.rooms??'?'} hab · ${l.bathrooms??'?'} baños${l.floor?` · ${esc(l.floor)}`:''}</div>
+          <div class="addr">${esc(l.address||l.title||'')}${l.district?` · ${esc(l.district)}`:''}${l.lat==null?' · <i>sin ubicación</i>':''}</div>
+          <div class="badges">
+            ${isNew(l)?'<span class="b new">NUEVO</span>':''}
+            <span class="b portal" style="background:${portalInfo(l.portal).color}">${esc(portalInfo(l.portal).label)}</span>
+            ${(l.also_on||[]).map(x=>`<span class="b portal" style="background:${portalInfo(x.portal).color};opacity:.7">${esc(portalInfo(x.portal).label)}</span>`).join('')}
+            <span class="b op">${l.operation==='rent'?'Alquiler':'Venta'}</span>
+            ${TYPES[l.type]?`<span class="b">${TYPES[l.type]}</span>`:''}
+          </div>
+        </div>
+      </div>`).join('') + (shown.length>LIMIT?`<div class="empty">Mostrando ${LIMIT} de ${shown.length}. Afina los filtros o el mapa.</div>`:'')
+      : '<div class="empty">Ningún anuncio cumple los filtros.</div>';
+  }
+  $('cards').addEventListener('click', e => {
+    const c = e.target.closest('.card'); if(!c) return;
+    const l = all.find(x=>x.id===c.dataset.id); if(!l) return;
+    const m = markers.get(l.id);
+    if (m) cluster.zoomToShowLayer(m, () => m.openPopup());
+    else if (safeUrl(l.url)) window.open(l.url, '_blank', 'noopener');
+  });
+  $('cards').addEventListener('dblclick', e => {
+    const c = e.target.closest('.card'); const l = c && all.find(x=>x.id===c.dataset.id);
+    if (l && safeUrl(l.url)) window.open(l.url, '_blank', 'noopener');
+  });
+
+  // --- load ---
+  let firstLoad = true;
+  async function load(manual){
+    try{
+      const r = await fetch(DATA_URL + '?t=' + Date.now(), {cache:'no-store'});
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      const prevIds = new Set(all.map(l=>l.id));
+      meta = j; all = (j.listings||[]).map(l => ({...l, id:String(l.id)}));
+      if (seenCutoff==null){ // primera visita: nada es "nuevo" todavía
+        seenCutoff = j.generated_at || new Date().toISOString();
+        store.set('mlg_seen_cutoff', seenCutoff);
+      }
+      $('demoBadge').style.display = j.demo ? 'inline-block' : 'none';
+      const nNew = all.filter(isNew).length;
+      const when = j.generated_at ? new Date(j.generated_at).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}) : '?';
+      $('stats').textContent = `${all.length.toLocaleString('es-ES')} anuncios activos · ${nNew} nuevos · datos de ${when}`;
+      buildDynamicFilters();
+      apply();
+      if (firstLoad){
+        const pts = all.filter(l=>l.lat!=null).map(l=>[l.lat,l.lng]);
+        if (pts.length) map.fitBounds(pts, {padding:[30,30], maxZoom:14});
+      } else {
+        const added = all.filter(l=>!prevIds.has(l.id)).length;
+        toast(added ? `${added} anuncios nuevos desde la última carga` : (manual ? 'Sin cambios' : ''));
+      }
+      firstLoad = false;
+    }catch(err){
+      $('stats').textContent = 'No se pudo cargar data/listings.json — ¿estás sirviendo la carpeta con un servidor web? (' + err.message + ')';
+    }
+  }
+
+  let timer = null;
+  function setAuto(sec){ clearInterval(timer); if (+sec>0) timer = setInterval(()=>load(false), sec*1000); store.set('mlg_auto', sec); }
+  $('autoRefresh').value = store.get('mlg_auto', '300');
+  $('autoRefresh').onchange = e => setAuto(e.target.value);
+  $('reload').onclick = () => load(true);
+  $('markSeen').onclick = () => { seenCutoff = meta.generated_at || new Date().toISOString(); store.set('mlg_seen_cutoff', seenCutoff); apply(); load(false); toast('Todo marcado como visto'); };
+  $('exportCsv').onclick = () => {
+    const cols = ['portal','operation','type','price','size','rooms','bathrooms','district','address','lat','lng','url','first_seen'];
+    const q = v => `"${String(v??'').replace(/"/g,'""')}"`;
+    const csv = [cols.join(';'), ...shown.map(l=>cols.map(c=>q(l[c])).join(';'))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿'+csv], {type:'text/csv'}));
+    a.download = `viviendas-malaga-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  };
+
+  setupStaticFilters();
+  setAuto($('autoRefresh').value);
+  load(false);
+})();
+</script>
+</body>
+</html>

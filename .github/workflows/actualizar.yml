@@ -1,0 +1,66 @@
+name: Actualizar mapa
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"     # cada 30 min (GitHub puede retrasarlo unos minutos)
+  workflow_dispatch: {}         # botón "Run workflow" para lanzarlo a mano
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      # Recupera el listings.json publicado para conservar first_seen (marca de "NUEVO")
+      - name: Descargar datos anteriores
+        run: |
+          mkdir -p data
+          URL="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/data/listings.json"
+          curl -fsSL "$URL" -o data/listings.json || echo "Sin datos previos (primera ejecución)"
+
+      - name: Recoger anuncios
+        env:
+          IDEALISTA_API_KEY: ${{ secrets.IDEALISTA_API_KEY }}
+          IDEALISTA_API_SECRET: ${{ secrets.IDEALISTA_API_SECRET }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+        run: |
+          if [ "${{ vars.DEMO_MODE }}" = "true" ]; then
+            python collector.py --demo
+          else
+            python collector.py
+          fi
+          [ -s data/listings.json ] || python collector.py --demo
+
+      - name: Preparar web
+        run: |
+          mkdir -p _site/data
+          cp index.html _site/
+          cp data/listings.json _site/data/
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

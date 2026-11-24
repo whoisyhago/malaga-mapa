@@ -1,0 +1,13 @@
+# Datos generados (se publican vía GitHub Pages, no se versionan)
+data/listings.json
+data/listings.json.tmp
+data/import/*
+!data/import/.gitkeep
+_site/
+
+# Claves locales: nunca al repo (en la nube van como Secrets)
+config.local.json
+.env
+
+__pycache__/
+*.log
